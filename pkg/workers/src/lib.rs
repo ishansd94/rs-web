@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::sync::mpsc;
-use logger;
+use logger::{self, info, warn};
 
 type Job = Box<dyn FnOnce() + Send +'static>;
 enum Message {
@@ -19,7 +19,7 @@ impl ThreadPool {
 
         assert!(size > 0);
 
-        logger::info(format!("Creating thread pool with {} workers", size).as_str());
+        info!("Creating thread pool with {} workers", size);
 
         let (sender, receiver) = mpsc::channel();
         let receiver = Arc::new(Mutex::new(receiver));
@@ -46,17 +46,17 @@ impl Drop for ThreadPool {
     
     fn drop(&mut self) {
 
-        logger::warn("Sending terminate signal to all workers...");
+        warn!("Sending terminate signal to all workers...");
 
         for _ in &self.workers {
             self.sender.send(Message::Terminate).unwrap();
         }
 
-        logger::warn("Waiting for all workers to finish...");
+        warn!("Waiting for all workers to finish...");
 
         for worker in &mut self.workers {
 
-            logger::warn(format!("Shutting down worker {}...", worker.id).as_str());
+            warn!("Shutting down worker {}...", worker.id);
             
             if let Some(thread) = worker.thread.take() {
                 thread.join().unwrap();

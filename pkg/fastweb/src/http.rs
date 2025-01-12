@@ -7,6 +7,24 @@ pub enum HttpStatus {
     StatusCreated
 }
 
+impl Display for HttpStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{}", self.to_code())
+    }
+}
+
+impl Clone for HttpStatus {
+    fn clone(&self) -> Self {
+        match self {
+            HttpStatus::StatusOK => HttpStatus::StatusOK,
+            HttpStatus::StatusNotFound => HttpStatus::StatusNotFound,
+            HttpStatus::StatusBadRequest => HttpStatus::StatusBadRequest,
+            HttpStatus::StatusCreated => HttpStatus::StatusCreated
+        }
+    }
+}
+
+
 impl HttpStatus {
     pub fn to_code(&self) -> u32 {
         return match self {

@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 
-use logger::info;
+use logger::{debug, info};
 use workers::ThreadPool;
 
 use crate::{
@@ -261,9 +261,16 @@ fn handle(mut stream: TcpStream, routes: &RouteTable, buffer_size: &usize) {
 
                     request.set_path_params(path_params);
 
+                    let method = request.method().to_string();
+                    let path = request.path().to_string();
+
                     let response = (route.handler)(request);
 
-                    stream.write(response.build().as_bytes()).unwrap();  
+                    let status = response.status();
+
+                    debug!("{} {} {}",method, path, status);
+
+                    stream.write(response.build().as_bytes()).unwrap();
                 },
                 None => {
                     let content = error_html();

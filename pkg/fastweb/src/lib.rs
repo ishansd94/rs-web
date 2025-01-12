@@ -3,10 +3,14 @@ pub mod router;
 pub mod request;
 pub mod response;
 
-use std::collections::HashMap;
-
 use router::{RouteTable, RouterBuilder};
 
+static CRLF : &str = "\r\n";
+static PATH_SEPARATOR : &str = "/";
+static QUERY_PARAM_KEY_VALUE_SEPARATOR : &str = "=";
+static QUERY_PARAM_SEPARATOR : &str = "&";
+static QUERY_PARAM_START : &str = "?";
+static EMPTY: &str = "";
 
 // fn handle_connection(mut stream: TcpStream) {
 //     let mut buffer = [0; 1024];

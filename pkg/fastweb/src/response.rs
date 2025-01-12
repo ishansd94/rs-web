@@ -25,6 +25,10 @@ pub fn json(status: HttpStatus, content: String) -> Response {
 
 impl Response {
 
+    pub fn status(&self) -> &HttpStatus {
+        &self.status
+    }
+
     pub fn build(&self) -> String {
 
         match self.content_type {

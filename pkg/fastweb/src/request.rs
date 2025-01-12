@@ -2,6 +2,8 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::http::HttpMethod;
 
+use super::{CRLF, QUERY_PARAM_KEY_VALUE_SEPARATOR, QUERY_PARAM_SEPARATOR, QUERY_PARAM_START, EMPTY};
+
 
 #[derive(Debug)]
 pub struct Request {
@@ -50,7 +52,7 @@ impl Request {
 }
 
 pub fn parse(request_raw: &str) -> Request {
-    let mut lines = request_raw.split("\r\n");
+    let mut lines = request_raw.split(CRLF);
 
     // Parse the request line
     let request_meta = lines.next().unwrap();
@@ -66,25 +68,25 @@ pub fn parse(request_raw: &str) -> Request {
         .map(|line| {
             let mut parts = line.splitn(2, ": ");
             let key = parts.next().unwrap().to_string();
-            let value = parts.next().unwrap_or("").to_string();
+            let value = parts.next().unwrap_or(EMPTY).to_string();
             (key, value)
         })
         .collect();
 
-    let query_params: HashMap<String, String> = path.split("?")
+    let query_params: HashMap<String, String> = path.split(QUERY_PARAM_START)
                            .nth(1)
                            .unwrap_or_default()
-                           .split("&")
+                           .split(QUERY_PARAM_SEPARATOR)
                            .map(|param| {
-                               let mut param_parts = param.split("=");
+                               let mut param_parts = param.split(QUERY_PARAM_KEY_VALUE_SEPARATOR);
                                let key = param_parts.next().unwrap().to_string();
-                               let value = param_parts.next().unwrap_or("").to_string();
+                               let value = param_parts.next().unwrap_or(EMPTY).to_string();
                                (key, value)
                            })
                            .collect();
 
     // Parse the body
-    let body = lines.collect::<Vec<&str>>().join("\r\n").trim_matches(char::from(0)).to_string();
+    let body = lines.collect::<Vec<&str>>().join(CRLF).trim_matches(char::from(0)).to_string();
 
     // Construct and return the Request
     return Request {
