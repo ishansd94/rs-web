@@ -52,7 +52,7 @@ impl RouteTable {
     }
 
     pub fn insert(&mut self, route: Route) {
-        self.0.push((route.path.clone(), route));
+        self.0.push((route.path.to_string(), route));
     }
 }
 
@@ -156,7 +156,6 @@ impl RouterBuilder {
 
             match stream {
                 Ok(stream) => {
-                    let routes = Arc::clone(&routes);
                     pool.execute(move || {
                         handle(stream, &routes, &buffer_size);
                     });
@@ -197,7 +196,7 @@ impl RouterBuilder {
             Route {
                 method: method,
                 abs_path: normalized_path.clone(),
-                path: path.clone(),
+                path: path,
                 handler: handler,
                 path_params: match path_params.len() {
                     0 => None,
