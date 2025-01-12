@@ -1,0 +1,11 @@
+[package]
+name = "fastweb-sample"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = ["pkg/fastweb"]
+
+[dependencies]
+fastweb = { path = "pkg/fastweb" }
+logger ={ path = "pkg/logger" }

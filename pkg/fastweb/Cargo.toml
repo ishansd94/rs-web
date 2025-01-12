@@ -1,0 +1,8 @@
+[package]
+name = "fastweb"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+workers = { path = "../workers" }
+logger = { path = "../logger" }
