@@ -7,10 +7,13 @@ use router::{RouteTable, RouterBuilder};
 
 static CRLF : &str = "\r\n";
 static PATH_SEPARATOR : &str = "/";
+static DOUBLE_PATH_SEPARATOR : &str = "//";
 static QUERY_PARAM_KEY_VALUE_SEPARATOR : &str = "=";
 static QUERY_PARAM_SEPARATOR : &str = "&";
 static QUERY_PARAM_START : &str = "?";
 static EMPTY: &str = "";
+static LEFT_BRACKET: &str = "{";
+static RIGHT_BRACKET: &str = "}";
 
 // fn handle_connection(mut stream: TcpStream) {
 //     let mut buffer = [0; 1024];

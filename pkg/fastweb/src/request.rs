@@ -9,6 +9,7 @@ use super::{CRLF, QUERY_PARAM_KEY_VALUE_SEPARATOR, QUERY_PARAM_SEPARATOR, QUERY_
 pub struct Request {
     method: HttpMethod,
     path: String,
+    trimmed_path: String,
     query_params: HashMap<String, String>,
     path_params: HashMap<String, String>,
     headers: HashMap<String, String>,
@@ -23,6 +24,10 @@ impl Request {
 
     pub fn path(&self) -> &str {
         &self.path
+    }
+
+    pub fn trimmed_path(&self) -> &str {
+        &self.trimmed_path
     }
 
     pub fn headers(&self) -> &HashMap<String, String> {
@@ -73,17 +78,23 @@ pub fn parse(request_raw: &str) -> Request {
         })
         .collect();
 
-    let query_params: HashMap<String, String> = path.split(QUERY_PARAM_START)
-                           .nth(1)
-                           .unwrap_or_default()
-                           .split(QUERY_PARAM_SEPARATOR)
-                           .map(|param| {
-                               let mut param_parts = param.split(QUERY_PARAM_KEY_VALUE_SEPARATOR);
-                               let key = param_parts.next().unwrap().to_string();
-                               let value = param_parts.next().unwrap_or(EMPTY).to_string();
-                               (key, value)
-                           })
-                           .collect();
+    let mut path_parts = path.split(QUERY_PARAM_START);
+    let abs_path = path_parts.nth(0).unwrap();
+    let query_params_str = path_parts.nth(1).unwrap_or_default();
+    
+    let mut query_params = HashMap::new();
+
+    if !query_params_str.is_empty() {
+        query_params = query_params_str
+                        .split(QUERY_PARAM_SEPARATOR)
+                        .map(|param| {
+                            let mut param_parts = param.split(QUERY_PARAM_KEY_VALUE_SEPARATOR);
+                            let key = param_parts.next().unwrap().to_string();
+                            let value = param_parts.next().unwrap_or(EMPTY).to_string();
+                            (key, value)
+                        })
+                        .collect();
+    }
 
     // Parse the body
     let body = lines.collect::<Vec<&str>>().join(CRLF).trim_matches(char::from(0)).to_string();
@@ -92,6 +103,7 @@ pub fn parse(request_raw: &str) -> Request {
     return Request {
         method: HttpMethod::from_str(method).unwrap(),
         path: path.to_string(),
+        trimmed_path: abs_path.to_string(),
         headers,
         body,
         query_params,

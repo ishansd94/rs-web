@@ -12,6 +12,7 @@ use std::{
 use logger::{debug, info};
 use workers::ThreadPool;
 
+use crate::{DOUBLE_PATH_SEPARATOR, EMPTY, LEFT_BRACKET, PATH_SEPARATOR, RIGHT_BRACKET};
 use crate::{
     http::{HttpContentType, HttpMethod, HttpStatus},
     request, response, Configuration, TLS,
@@ -45,10 +46,7 @@ impl RouteTable {
         .map(|(_, route)|  route)
         .collect::<Vec<&Route>>();
         
-        match routes.len() {
-            0 => None,
-            _ => Some(routes)
-        }
+        return (!routes.is_empty()).then_some(routes)
     }
 
     pub fn insert(&mut self, route: Route) {
@@ -170,27 +168,27 @@ impl RouterBuilder {
     }
 
     pub fn add_route(&mut self, path: &str, method: HttpMethod, handler: HandlerFunc) -> &Self {
-        let normalized_path = path.replace("//", "/");
+        let normalized_path = path.replace(DOUBLE_PATH_SEPARATOR, PATH_SEPARATOR);
 
-        let tokens = normalized_path.split("/").collect::<Vec<&str>>();
+        let tokens = normalized_path.split(PATH_SEPARATOR).collect::<Vec<&str>>();
 
         let mut path_params = vec![];
 
         for token in tokens.clone()  {
-            if token.starts_with("{") && token.ends_with("}") {
+            if token.starts_with(LEFT_BRACKET) && token.ends_with(RIGHT_BRACKET) {
                 let param = token
-                                     .replace("{", "")
-                                     .replace("}", "")
+                                     .replace(LEFT_BRACKET, EMPTY)
+                                     .replace(RIGHT_BRACKET, EMPTY)
                                      .to_lowercase();
                 path_params.push(param);
             }
         }
 
         let path = normalized_path                         
-                            .split("/")
-                            .filter(|token| !token.starts_with("{") && !token.ends_with("}"))
+                            .split(PATH_SEPARATOR)
+                            .filter(|token| !token.starts_with(LEFT_BRACKET) && !token.ends_with(RIGHT_BRACKET))
                             .collect::<Vec<&str>>()
-                            .join("/");
+                            .join(PATH_SEPARATOR);
         
         self.routes.insert(
             Route {
@@ -222,14 +220,16 @@ impl RouterBuilder {
 fn handle(mut stream: TcpStream, routes: &RouteTable, buffer_size: &usize) {
     
     let mut buffer = vec![0; *buffer_size];
-    stream.read(&mut buffer).unwrap();
+    let bytes_read = stream.read(&mut buffer).unwrap();
+    let request_str = std::str::from_utf8(&buffer[..bytes_read]).unwrap();
 
-    let mut request = request::parse(std::str::from_utf8(&buffer).unwrap());
+    let mut request = request::parse(request_str);
+    let method = request.method().to_string();
+    let path = request.path().to_string();
 
     let routes = routes.get_matches(request.path());
 
-    
-    let tokens = request.path().split("/").collect::<Vec<&str>>();
+    let tokens = request.path().split(PATH_SEPARATOR).collect::<Vec<&str>>();
     let token_count = tokens.len();
 
     match routes {
@@ -243,14 +243,19 @@ fn handle(mut stream: TcpStream, routes: &RouteTable, buffer_size: &usize) {
 
             match route {
                 Some(route) => {
-
-                    let path_params_list: Vec<&str> = request.path()
-                                                           .strip_prefix(&route.path)
-                                                           .unwrap_or("")
-                                                           .split("?").collect::<Vec<&str>>()[0]
-                                                           .split('/')
-                                                           .filter(|s| !s.is_empty())
-                                                           .collect();
+                    
+                    let path_params_list: Vec<&str> = 
+                                        if request.trimmed_path() == route.path {
+                                            vec![]
+                                        } else {
+                                            request
+                                                .trimmed_path()
+                                                .strip_prefix(route.path.as_str())
+                                                .unwrap()
+                                                .split('/')
+                                                .filter(|s| !s.is_empty())
+                                                .collect()
+                                        };
 
                     let mut path_params = HashMap::new();
 
@@ -259,9 +264,6 @@ fn handle(mut stream: TcpStream, routes: &RouteTable, buffer_size: &usize) {
                     }
 
                     request.set_path_params(path_params);
-
-                    let method = request.method().to_string();
-                    let path = request.path().to_string();
 
                     let response = (route.handler)(request);
 
