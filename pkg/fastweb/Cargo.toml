@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 workers = { path = "../workers" }
 logger = { path = "../logger" }
+flate2 = "1.0.35"

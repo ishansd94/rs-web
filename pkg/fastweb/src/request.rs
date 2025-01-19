@@ -1,11 +1,11 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::{http::HttpMethod, PATH_SEPARATOR};
+use crate::{http::{Encoding, Headers, HttpMethod}, PATH_SEPARATOR};
 
 use super::{CRLF, QUERY_PARAM_KEY_VALUE_SEPARATOR, QUERY_PARAM_SEPARATOR, QUERY_PARAM_START, EMPTY};
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Request {
     method: HttpMethod,
     path: String,
@@ -15,6 +15,7 @@ pub struct Request {
     headers: HashMap<String, String>,
     body: String,
     raw: String,
+    encoding: Option<Encoding>
 }
 
 impl Request {
@@ -53,6 +54,10 @@ impl Request {
     pub fn raw(&self) -> &str {
         &self.raw
     }
+
+    pub fn encoding(&self) -> Option<Encoding> {
+        self.encoding.clone()
+    }
     
 }
 
@@ -67,7 +72,7 @@ pub fn parse(request_raw: &str) -> Request {
     let _ = request_meta_parts.next(); // Ignore the HTTP version
 
     // Parse the headers
-    let headers = lines
+    let headers: HashMap<String, String> = lines
         .by_ref()
         .take_while(|line| !line.is_empty())
         .map(|line| {
@@ -80,7 +85,6 @@ pub fn parse(request_raw: &str) -> Request {
 
     let mut path_parts = path.split(QUERY_PARAM_START);
     let qualified_path = path_parts.nth(0).unwrap();
-    let tokens = qualified_path.split(PATH_SEPARATOR).count();
     let query_params_str = path_parts.nth(0).unwrap_or_default();
     
     let mut query_params = HashMap::new();
@@ -100,6 +104,16 @@ pub fn parse(request_raw: &str) -> Request {
     // Parse the body
     let body = lines.collect::<Vec<&str>>().join(CRLF).trim_matches(char::from(0)).to_string();
 
+    let encoding = headers.get(Headers::AcceptEncoding.to_str()).and_then(|encoding| {
+        let supported = Encoding::get_supported();
+        let accepted_encodings = encoding.split(',').map(|e| e.trim());
+        for accepted_encoding in accepted_encodings {
+            if supported.contains(&Encoding::from_str(accepted_encoding).unwrap()) {
+                return Some(Encoding::from_str(accepted_encoding).unwrap_or_default());
+            }
+        }
+        None
+    });
     // Construct and return the Request
     return Request {
         method: HttpMethod::from_str(method).unwrap(),
@@ -110,5 +124,6 @@ pub fn parse(request_raw: &str) -> Request {
         query_params,
         path_params: HashMap::new(),
         raw: request_raw.to_string(),
+        encoding
     }
 }

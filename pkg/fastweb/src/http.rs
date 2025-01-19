@@ -93,7 +93,7 @@ pub enum HttpContentType {
 }
 
 impl HttpContentType {
-    fn to_str(&self) -> &str {
+    pub fn to_str(&self) -> &str {
         return match self {
             HttpContentType::HTML => "text/html",
             HttpContentType::JSON => "application/json",
@@ -110,4 +110,47 @@ impl Display for HttpContentType {
 
 pub enum HttpProtocol {
     HTTP1
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub enum Encoding {
+    GZIP,
+    #[default]
+    None
+}
+
+impl Encoding {
+    pub fn to_str(&self) -> &str {
+        return match self {
+            Encoding::GZIP => "gzip",
+            Encoding::None => "none"
+        };
+    }
+
+    pub fn get_supported() -> Vec<Encoding> {
+        return vec![Encoding::GZIP];
+    }
+
+    pub fn from_str(s: &str) -> Option<Encoding> {
+        return match s {
+            "gzip" => Some(Encoding::GZIP),
+            _ => None,
+        };
+    }
+}
+
+pub enum Headers {
+    AcceptEncoding,
+    ContentType,
+    ContentLength
+}
+
+impl Headers {
+    pub fn to_str(&self) -> &str {
+        return match self {
+            Headers::AcceptEncoding => "Accept-Encoding",
+            Headers::ContentType => "Content-Type",
+            Headers::ContentLength => "Content-Length"
+        };
+    }
 }

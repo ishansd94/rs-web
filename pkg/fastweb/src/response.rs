@@ -1,21 +1,26 @@
 use logger::debug;
-
-use crate::http::{HttpStatus, HttpContentType};
+use flate2::{write::GzEncoder, Compression};
+use std::io::{Bytes, Write};
+use crate::http::{Encoding, HttpContentType, HttpStatus};
 use crate::CRLF;
 
 
 // #[derive(Default)]
 pub struct Response {
     pub status: HttpStatus,
+    headers: Vec<String>,
     pub content: String,
     pub content_type: HttpContentType,
+    encoding: Option<Encoding>,
 }
 
 pub fn new(status: HttpStatus, content: String, content_type: HttpContentType) -> Response {
     Response {
         status,
+        headers: Vec::new(),
         content,            
-        content_type,   
+        content_type,
+        encoding: None,   
     }
 }
 
@@ -41,27 +46,63 @@ impl Response {
         return "HTTP/1.1"
     }
 
-    fn headers() {
-
+    fn set_header(&mut self, key: &str, value: &str) {
+        debug!("Setting Response Header: {} : {}", key, value);
+        self.headers.push(format!("{}: {}", key, value));
     }
 
-    pub fn build(&self) -> String {
+    pub fn set_encoding(&mut self, encoding: &Option<Encoding>) {
+        self.encoding = encoding.clone();
+        match encoding {
+            Some(e) => self.set_header("Content-Encoding", e.to_str()),
+            None => (),
+        }
+    }
 
-        let resp = format!("{} {} {}{}Content-Length: {}{}Content-Type: {}{}{}{}",
+    pub fn build(&mut self) -> Vec<u8> {
+
+        debug!("Encoding set to: {:?}", self.encoding);
+
+        let (content, headers) = {
+            let content = match &self.encoding {
+                Some(enc) => {
+                    match enc {
+                        Encoding::GZIP => {
+                            debug!("Compressing response content with GZIP");
+                            let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+                            encoder.write_all(self.content.as_bytes()).unwrap();
+                            encoder.finish().unwrap()
+                        }
+                        _ => self.content.clone().into_bytes(),
+                    }
+
+                },
+                None => self.content.clone().into_bytes(),
+            };
+    
+            // Prepare headers
+            self.headers.push(format!("Content-Type: {}", self.content_type.to_str()));
+            self.headers.push(format!("Content-Length: {}", content.len()));
+            let headers = self.headers.join(CRLF);
+            
+            (content, headers)
+        };
+
+        let resp = format!("{} {} {}{}{}{}{}",
                 self.protocol(), 
                 self.status.to_code(),
                 self.status.to_str(),
                 CRLF,
-                self.content.len(),
+                headers,
                 CRLF,
-                self.content_type.to_string(),
-                CRLF,
-                CRLF,
-                self.content
+                CRLF
         );
 
-        debug!("Response Raw\n{:?}", resp);
+        debug!("Response Raw\n{:?} {}", resp, self.content);
 
-        return resp;
+        let mut resp = resp.into_bytes();
+        resp.extend(&content);
+
+        return resp
     }
 }

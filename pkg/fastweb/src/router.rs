@@ -1,11 +1,5 @@
 use std::{
-    collections::HashMap,
-    error::Error,
-    fmt::{Debug, Display},
-    fs,
-    io::prelude::*,
-    net::{TcpListener, TcpStream},
-    sync::Arc,
+    collections::HashMap, error::Error, fmt::{Debug, Display}, fs, io::prelude::*, net::{TcpListener, TcpStream}, rc::Rc, sync::Arc
 };
 
 use logger::{debug, error, info};
@@ -77,11 +71,13 @@ impl RouteTable {
                                     .map(|(_, _, route)| route)
                                     .collect::<Vec<&Route>>();
 
+
+
         if !matches.is_empty() {
-            Some(matches[0]);
+            return Some(matches[0]);
         }
         
-        None
+        return None;
         
     }
 
@@ -281,10 +277,11 @@ fn handle(
     let qualified_path = request.qualified_path().to_string();
 
     let route = routes.find(&qualified_path, request.method());
+    let enc = request.encoding();
 
     debug!("Route matched\n{:?}", route);
 
-    let response = match route {
+    let mut response = match route {
         Some(route) => {
             let path_params_list: Vec<&str> = if qualified_path == route.base_path {
                 vec![]
@@ -316,7 +313,9 @@ fn handle(
         None => not_found(),
     };
 
-    stream.write(response.build().as_bytes())?;
+    response.set_encoding(&enc);
+
+    stream.write(&response.build())?;
     info!("{} {} {}", method, path, response.status());
     stream.flush()?;
 
