@@ -15,8 +15,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "/ping",
         handler!(|r: Request| {
             let content = String::from("pong");
-            println!("{:?}", r);
-            return fastweb::response::html(HttpStatus::StatusOK, content);
+            // println!("{:?}", r);
+            return fastweb::response::text(HttpStatus::StatusOK, content);
         }),
     );
 
@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         handler!(|r: Request| {
             let params = r.query_params();
             let content = String::from("pong");
-            return fastweb::response::html(HttpStatus::StatusOK, content);
+            return fastweb::response::text(HttpStatus::StatusOK, content);
         }),
     );
 

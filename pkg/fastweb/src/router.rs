@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::io::prelude::*;
-use std::process::exit;
 use std::{
     error::Error,
     fmt::Debug,
@@ -41,7 +40,7 @@ impl Clone for RouteTable {
 impl RouteTable {
     pub fn get_matches(&self, qualified_path: &str) -> Option<Vec<&Route>> {
 
-        debug!("RouteTable.get_matches: qualified_path - {}", qualified_path);
+        debug!("Matching for qualified path - {}", qualified_path);
 
         let routes = self
             .0
@@ -279,11 +278,9 @@ fn handle(mut stream: TcpStream, routes: &RouteTable, buffer_size: &usize) {
 
                     let response = (route.handler)(request);
 
-                    let status = response.status();
-
-                    debug!("{} {} {}", method, path, status);
-
                     stream.write(response.build().as_bytes()).unwrap();
+
+                    info!("{} {} {}", method, path, response.status());
                 }
                 None => {
                     let content = error_html();

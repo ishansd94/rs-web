@@ -35,7 +35,7 @@ impl HttpStatus {
         };
     }
 
-    pub fn get_message(&self) -> &str {
+    pub fn to_str(&self) -> &str {
         return match self {
             HttpStatus::StatusOK => "OK",
             HttpStatus::StatusNotFound => "Not Found",
@@ -89,6 +89,7 @@ impl Display for HttpMethod {
 pub enum HttpContentType {
     HTML,
     JSON,
+    TEXT,
 }
 
 impl HttpContentType {
@@ -96,6 +97,7 @@ impl HttpContentType {
         return match self {
             HttpContentType::HTML => "text/html",
             HttpContentType::JSON => "application/json",
+            HttpContentType::TEXT => "application/text"
         };
     }
 }
@@ -104,4 +106,8 @@ impl Display for HttpContentType {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "{}", self.to_str())
     }
+}
+
+pub enum HttpProtocol {
+    HTTP1
 }

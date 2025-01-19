@@ -1,5 +1,7 @@
-use crate::http::{HttpStatus, HttpContentType};
+use logger::debug;
 
+use crate::http::{HttpStatus, HttpContentType};
+use crate::CRLF;
 
 pub struct Response {
     pub status: HttpStatus,
@@ -23,34 +25,41 @@ pub fn json(status: HttpStatus, content: String) -> Response {
     return new(status, content, HttpContentType::JSON);
 }
 
+pub fn text(status: HttpStatus, content: String) -> Response {
+    return new(status, content, HttpContentType::JSON);
+}
+
 impl Response {
 
     pub fn status(&self) -> &HttpStatus {
         &self.status
     }
 
+    fn protocol(&self) -> &str {
+        return "HTTP/1.1"
+    }
+
+    fn headers() {
+
+    }
+
     pub fn build(&self) -> String {
 
-        match self.content_type {
-            HttpContentType::HTML => {
-                return format!(
-                    "HTTP/1.1 {} {}\r\nContent-Type: {}\r\n\r\n{}",
-                    self.status.to_code(),
-                    self.status.get_message(),
-                    self.content_type,
-                    self.content
-                );
-            }
-            HttpContentType::JSON => {
-                return format!(
-                    "HTTP/1.1 {} {}\r\nContent-Type: {}\r\n\r\n{}",
-                    self.status.to_code(),
-                    self.status.get_message(),
-                    self.content_type,
-                    self.content
-                );
-            }
-            
-        }
+        let resp = format!("{} {} {}{}Content-Length: {}{}Content-Type: {}{}{}{}",
+                self.protocol(), 
+                self.status.to_code(),
+                self.status.to_str(),
+                CRLF,
+                self.content.len(),
+                CRLF,
+                self.content_type.to_string(),
+                CRLF,
+                CRLF,
+                self.content
+        );
+
+        debug!("Response Raw\n{:?}", resp);
+
+        return resp;
     }
 }
