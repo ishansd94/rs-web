@@ -55,3 +55,10 @@ pub fn new() -> RouterBuilder {
         routes: RouteTable(Vec::new()),
     }
 }
+
+#[macro_export]
+macro_rules! handler {
+    ($closure:expr) => {
+        Arc::new($closure)
+    };
+}

@@ -37,21 +37,22 @@ fn should_log(level: Level) -> bool {
     unsafe { level >= GLOBAL_MIN_LEVEL }
 }
 
+pub fn format(level: Level, msg: &str) -> String {
+    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    match level {
+        Level::Debug => format!("[DEBUG] {} : {}", timestamp, msg),
+        Level::Info => format!("[INFO] {} : {}", timestamp, msg).green().to_string(),
+        Level::Warn => format!("[WARN] {} : {}", timestamp, msg).yellow().to_string(),
+        Level::Error => format!("[ERROR] {} : {}", timestamp, msg).red().to_string(),
+    }
+}
+
 fn log(level: Level, msg: &str) {
     if !should_log(level) {
         return;
     }
 
-    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-
-    let log_line = match level {
-        Level::Debug => format!("[DEBUG] {} : {}", timestamp, msg),
-        Level::Info => format!("[INFO] {} : {}", timestamp, msg).green().to_string(),
-        Level::Warn => format!("[WARN] {} : {}", timestamp, msg).yellow().to_string(),
-        Level::Error => format!("[ERROR] {} : {}", timestamp, msg).red().to_string(),
-    };
-
-    println!("{}", log_line)
+    println!("{}", format(level, msg));
 }
 
 #[macro_export]

@@ -9,7 +9,7 @@ use super::{CRLF, QUERY_PARAM_KEY_VALUE_SEPARATOR, QUERY_PARAM_SEPARATOR, QUERY_
 pub struct Request {
     method: HttpMethod,
     path: String,
-    trimmed_path: String,
+    qualified_path: String,
     query_params: HashMap<String, String>,
     path_params: HashMap<String, String>,
     headers: HashMap<String, String>,
@@ -26,8 +26,8 @@ impl Request {
         &self.path
     }
 
-    pub fn trimmed_path(&self) -> &str {
-        &self.trimmed_path
+    pub fn qualified_path(&self) -> &str {
+        &self.qualified_path
     }
 
     pub fn headers(&self) -> &HashMap<String, String> {
@@ -79,8 +79,8 @@ pub fn parse(request_raw: &str) -> Request {
         .collect();
 
     let mut path_parts = path.split(QUERY_PARAM_START);
-    let abs_path = path_parts.nth(0).unwrap();
-    let query_params_str = path_parts.nth(1).unwrap_or_default();
+    let qualified_path = path_parts.nth(0).unwrap();
+    let query_params_str = path_parts.nth(0).unwrap_or_default();
     
     let mut query_params = HashMap::new();
 
@@ -103,7 +103,7 @@ pub fn parse(request_raw: &str) -> Request {
     return Request {
         method: HttpMethod::from_str(method).unwrap(),
         path: path.to_string(),
-        trimmed_path: abs_path.to_string(),
+        qualified_path: qualified_path.to_string(),
         headers,
         body,
         query_params,
