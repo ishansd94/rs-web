@@ -3,6 +3,8 @@ use logger::debug;
 use crate::http::{HttpStatus, HttpContentType};
 use crate::CRLF;
 
+
+// #[derive(Default)]
 pub struct Response {
     pub status: HttpStatus,
     pub content: String,

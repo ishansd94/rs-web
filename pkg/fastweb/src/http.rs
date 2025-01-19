@@ -45,7 +45,7 @@ impl HttpStatus {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum HttpMethod {
     ALL,
     GET,

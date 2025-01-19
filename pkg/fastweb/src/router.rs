@@ -1,31 +1,32 @@
-use std::collections::HashMap;
-use std::io::prelude::*;
 use std::{
+    collections::HashMap,
     error::Error,
-    fmt::Debug,
-    fmt::Display,
+    fmt::{Debug, Display},
     fs,
+    io::prelude::*,
     net::{TcpListener, TcpStream},
     sync::Arc,
 };
 
-use logger::{debug, info};
+use logger::{debug, error, info};
 use workers::ThreadPool;
 
 use crate::{
     http::{HttpContentType, HttpMethod, HttpStatus},
-    request, response, Configuration, TLS,
+    request,
+    response::{self, Response},
+    Configuration, TLS,
 };
 use crate::{DOUBLE_PATH_SEPARATOR, EMPTY, LEFT_BRACKET, PATH_SEPARATOR, RIGHT_BRACKET};
 
 type HandlerFunc = Arc<dyn Fn(request::Request) -> response::Response + Send + Sync + 'static>;
 
-pub struct RouteTable(pub Vec<(String, Route)>);
+pub struct RouteTable(pub Vec<(String, HttpMethod, Route)>);
 
 impl Display for RouteTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.iter().for_each(|(_, route)| {
-            write!(f, "{} {}\n", route.method, route.path).unwrap();
+        self.0.iter().for_each(|(path, method, route)| {
+            write!(f, "{} {} {:?}\n", path, method, route).unwrap();
         });
         Ok(())
     }
@@ -38,22 +39,55 @@ impl Clone for RouteTable {
 }
 
 impl RouteTable {
-    pub fn get_matches(&self, qualified_path: &str) -> Option<Vec<&Route>> {
+    pub fn find(&self, qualified_path: &str, http_method: &HttpMethod) -> Option<&Route> {
+        debug!(
+            "Matching for Qualified path {}, HTTP method {}",
+            qualified_path, http_method
+        );
 
-        debug!("Matching for qualified path - {}", qualified_path);
+        let req_segments = qualified_path.split('/').collect::<Vec<&str>>();
 
-        let routes = self
-            .0
-            .iter()
-            .filter(|r| qualified_path.starts_with(&r.0))
-            .map(|(_, route)| route)
-            .collect::<Vec<&Route>>();
+        let matches = self
+                                    .0
+                                    .iter()
+                                    .filter(|(path, route_method, route)| {
 
-        return (!routes.is_empty()).then_some(routes);
+                                        if route_method != http_method {
+                                            return false;
+                                        }
+
+                                        if req_segments.len() != route.segments.len() {
+                                            return false;
+                                        }
+
+                                        for (index, segment) in route.segments.iter().enumerate() {
+                                            if segment.starts_with(LEFT_BRACKET) && segment.ends_with(RIGHT_BRACKET) {
+                                                continue;
+                                            }
+                                    
+                                            if segment != &req_segments[index] {
+                                                return false;
+                                            }
+                                        }
+
+                                        return true;
+
+
+                                    })
+                                    .map(|(_, _, route)| route)
+                                    .collect::<Vec<&Route>>();
+
+        if !matches.is_empty() {
+            Some(matches[0]);
+        }
+        
+        None
+        
     }
 
     pub fn insert(&mut self, route: Route) {
-        self.0.push((route.base_path.to_string(), route));
+        self.0
+            .push((route.base_path.clone(), route.method.clone(), route));
     }
 }
 
@@ -64,6 +98,7 @@ pub struct Route {
     handler: HandlerFunc,
     path_params: Option<Vec<String>>,
     tokens: usize,
+    segments: Vec<String>,
 }
 
 impl Clone for Route {
@@ -75,6 +110,7 @@ impl Clone for Route {
             handler: Arc::clone(&self.handler),
             path_params: self.path_params.clone(),
             tokens: self.tokens,
+            segments: self.segments.clone(),
         }
     }
 }
@@ -120,7 +156,7 @@ impl RouterBuilder {
     pub fn workers(&mut self, workers: usize) -> &mut Self {
         self.configuration.workers = workers;
         self
-    }
+    } 
 
     pub fn tls(&mut self, key_file: String, cert_file: String, ca_file: String) -> &mut Self {
         self.configuration.tls = Some(TLS {
@@ -157,7 +193,9 @@ impl RouterBuilder {
             match stream {
                 Ok(stream) => {
                     pool.execute(move || {
-                        handle(stream, &routes, &buffer_size);
+                        if let Err(e) = handle(stream, &routes, &buffer_size) {
+                            error!("Error handling request {}", e)
+                        }
                     });
                 }
                 Err(e) => {
@@ -172,11 +210,11 @@ impl RouterBuilder {
     pub fn add_route(&mut self, path: &str, method: HttpMethod, handler: HandlerFunc) -> &Self {
         let sanitized_path = path.replace(DOUBLE_PATH_SEPARATOR, PATH_SEPARATOR);
 
-        let tokens = sanitized_path.split(PATH_SEPARATOR).collect::<Vec<&str>>();
+        let tokens: Vec<String> = sanitized_path.split(PATH_SEPARATOR).map(|s| s.to_string()).collect();
 
         let mut path_params = vec![];
 
-        for token in tokens.clone() {
+        for token in &tokens{
             if token.starts_with(LEFT_BRACKET) && token.ends_with(RIGHT_BRACKET) {
                 let param = token
                     .replace(LEFT_BRACKET, EMPTY)
@@ -202,6 +240,7 @@ impl RouterBuilder {
                 _ => Some(path_params),
             },
             tokens: tokens.len(),
+            segments: tokens,
         });
 
         return self;
@@ -222,87 +261,73 @@ impl RouterBuilder {
     }
 }
 
-fn handle(mut stream: TcpStream, routes: &RouteTable, buffer_size: &usize) {
-    let mut buffer = vec![0; *buffer_size];
-    let bytes_read = stream.read(&mut buffer).unwrap();
-    let request_str = std::str::from_utf8(&buffer[..bytes_read]).unwrap();
+fn handle(
+    mut stream: TcpStream,
+    routes: &RouteTable,
+    buffer_size: &usize,
+) -> Result<(), Box<dyn Error>> {
+    debug!("Accepted connection from: {}", stream.peer_addr().unwrap());
 
-    let mut request = request::parse(request_str);
+    let mut buffer = vec![0; *buffer_size];
+    let bytes_read = stream.read(&mut buffer)?;
+    let raw_request = std::str::from_utf8(&buffer[..bytes_read])?;
+
+    let mut request = request::parse(raw_request);
 
     debug!("Parsed request\n{:?}", request);
 
     let method = request.method().to_string();
     let path = request.path().to_string();
+    let qualified_path = request.qualified_path().to_string();
 
-    let routes = routes.get_matches(request.qualified_path());
+    let route = routes.find(&qualified_path, request.method());
 
-    debug!("Routes matched\n{:?}", routes);
+    debug!("Route matched\n{:?}", route);
 
-    let tokens = request.path().split(PATH_SEPARATOR).collect::<Vec<&str>>();
-    let token_count = tokens.len();
+    let response = match route {
+        Some(route) => {
+            let path_params_list: Vec<&str> = if qualified_path == route.base_path {
+                vec![]
+            } else {
+                qualified_path
+                    .strip_prefix(&route.base_path)
+                    .unwrap_or("")
+                    .split('/')
+                    .filter(|s| !s.is_empty())
+                    .collect()
+            };
 
-    match routes {
-        //Exact match
-        Some(routes) => {
-            let route = routes
-                .iter()
-                .filter(|r| {
-                    r.tokens == token_count && r.method.to_string() == request.method().to_string()
-                })
-                .next();
+            let mut path_params = HashMap::new();
 
-            match route {
-                Some(route) => {
-                    let path_params_list: Vec<&str> = if request.qualified_path() == route.base_path {
-                        vec![]
-                    } else {
-                        request
-                            .qualified_path()
-                            .strip_prefix(route.base_path.as_str())
-                            .unwrap()
-                            .split('/')
-                            .filter(|s| !s.is_empty())
-                            .collect()
-                    };
-
-                    let mut path_params = HashMap::new();
-
-                    for (index, param) in path_params_list.iter().enumerate() {
-                        path_params.insert(
-                            route.path_params.as_ref().unwrap()[index].clone(),
-                            param.to_string(),
-                        );
+            if let Some(route_params) = &route.path_params {
+                for (index, param) in path_params_list.iter().enumerate() {
+                    if let Some(param_name) = route_params.get(index) {
+                        path_params.insert(param_name.clone(), param.to_string());
                     }
-
-                    request.set_path_params(path_params);
-
-                    let response = (route.handler)(request);
-
-                    stream.write(response.build().as_bytes()).unwrap();
-
-                    info!("{} {} {}", method, path, response.status());
-                }
-                None => {
-                    let content = error_html();
-                    let response =
-                        response::new(HttpStatus::StatusNotFound, content, HttpContentType::HTML);
-                    stream.write(response.build().as_bytes()).unwrap();
                 }
             }
+
+            request.set_path_params(path_params);
+
+            (route.handler)(request)
         }
 
-        //No Matches
-        None => {
-            let content = error_html();
-            let response =
-                response::new(HttpStatus::StatusNotFound, content, HttpContentType::HTML);
-            stream.write(response.build().as_bytes()).unwrap();
-        }
-    }
+        //Path matched but no matches for tokens or method
+        None => not_found(),
+    };
 
-    stream.flush().unwrap();
+    stream.write(response.build().as_bytes())?;
+    info!("{} {} {}", method, path, response.status());
+    stream.flush()?;
+
+    Ok(())
 }
 
 fn error_html() -> String {
     return fs::read_to_string("public/404.html").unwrap();
+}
+
+fn not_found() -> Response {
+    let content = error_html();
+    response::new(HttpStatus::StatusNotFound, content, HttpContentType::HTML)
 }

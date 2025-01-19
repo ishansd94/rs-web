@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::http::HttpMethod;
+use crate::{http::HttpMethod, PATH_SEPARATOR};
 
 use super::{CRLF, QUERY_PARAM_KEY_VALUE_SEPARATOR, QUERY_PARAM_SEPARATOR, QUERY_PARAM_START, EMPTY};
 
@@ -80,6 +80,7 @@ pub fn parse(request_raw: &str) -> Request {
 
     let mut path_parts = path.split(QUERY_PARAM_START);
     let qualified_path = path_parts.nth(0).unwrap();
+    let tokens = qualified_path.split(PATH_SEPARATOR).count();
     let query_params_str = path_parts.nth(0).unwrap_or_default();
     
     let mut query_params = HashMap::new();
