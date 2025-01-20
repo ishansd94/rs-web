@@ -1,6 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, hash::Hash, sync::Arc};
 
-use badserde::json::ToJson;
+use badserde::json::FromJson;
 use fastweb;
 use fastweb::handler;
 use fastweb::http::HttpStatus;
@@ -33,6 +33,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut  content: HashMap<String, String> = HashMap::new();
 
             content.insert(String::from("count"), r.path_params().get("count").unwrap().to_string());
+
+            let body : HashMap<String, String> = FromJson::from_json(r.body()).unwrap();
+
+            for (key, value) in body.iter() {
+                content.insert(key.to_string(), value.to_string());
+            }
 
             return fastweb::response::json(HttpStatus::StatusOK, content);
         }),
