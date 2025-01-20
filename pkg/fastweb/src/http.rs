@@ -1,10 +1,9 @@
-
 use std::fmt::{Display, Formatter, Result};
 pub enum HttpStatus {
     StatusOK,
     StatusBadRequest,
     StatusNotFound,
-    StatusCreated
+    StatusCreated,
 }
 
 impl Display for HttpStatus {
@@ -19,11 +18,10 @@ impl Clone for HttpStatus {
             HttpStatus::StatusOK => HttpStatus::StatusOK,
             HttpStatus::StatusNotFound => HttpStatus::StatusNotFound,
             HttpStatus::StatusBadRequest => HttpStatus::StatusBadRequest,
-            HttpStatus::StatusCreated => HttpStatus::StatusCreated
+            HttpStatus::StatusCreated => HttpStatus::StatusCreated,
         }
     }
 }
-
 
 impl HttpStatus {
     pub fn to_code(&self) -> u32 {
@@ -56,7 +54,6 @@ pub enum HttpMethod {
     PATCH,
 }
 
-
 impl HttpMethod {
     fn to_str(&self) -> &str {
         return match self {
@@ -80,7 +77,6 @@ impl HttpMethod {
 }
 
 impl Display for HttpMethod {
-
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "{}", self.to_str())
     }
@@ -97,7 +93,7 @@ impl HttpContentType {
         return match self {
             HttpContentType::HTML => "text/html",
             HttpContentType::JSON => "application/json",
-            HttpContentType::TEXT => "application/text"
+            HttpContentType::TEXT => "application/text",
         };
     }
 }
@@ -109,21 +105,21 @@ impl Display for HttpContentType {
 }
 
 pub enum HttpProtocol {
-    HTTP1
+    HTTP1,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum Encoding {
     GZIP,
     #[default]
-    None
+    None,
 }
 
 impl Encoding {
     pub fn to_str(&self) -> &str {
         return match self {
             Encoding::GZIP => "gzip",
-            Encoding::None => "none"
+            Encoding::None => "none",
         };
     }
 
@@ -142,7 +138,7 @@ impl Encoding {
 pub enum Headers {
     AcceptEncoding,
     ContentType,
-    ContentLength
+    ContentLength,
 }
 
 impl Headers {
@@ -150,7 +146,7 @@ impl Headers {
         return match self {
             Headers::AcceptEncoding => "Accept-Encoding",
             Headers::ContentType => "Content-Type",
-            Headers::ContentLength => "Content-Length"
+            Headers::ContentLength => "Content-Length",
         };
     }
 }

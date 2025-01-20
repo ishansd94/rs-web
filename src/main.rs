@@ -1,10 +1,11 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
+use badserde::json::ToJson;
 use fastweb;
+use fastweb::handler;
 use fastweb::http::HttpStatus;
 use fastweb::request::Request;
-use fastweb::handler;
-use logger::{self, info};
+use logger::{self};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     logger::set_level(logger::Level::Debug);
@@ -29,8 +30,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // println!("query params: {:?}", r.query_params());
             // println!("body: {:?}", r.body());
 
-            let count = r.path_params().get("count").unwrap();
-            let content = format!("{{\"count\": \"{}\"}}", count);
+            let mut  content: HashMap<String, String> = HashMap::new();
+
+            content.insert(String::from("count"), r.path_params().get("count").unwrap().to_string());
+
             return fastweb::response::json(HttpStatus::StatusOK, content);
         }),
     );
@@ -38,7 +41,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     router.post(
         "/ping",
         handler!(|r: Request| {
-            let params = r.query_params();
             let content = String::from("pong");
             return fastweb::response::text(HttpStatus::StatusOK, content);
         }),
@@ -53,5 +55,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
-

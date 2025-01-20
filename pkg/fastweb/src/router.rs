@@ -1,5 +1,11 @@
 use std::{
-    collections::HashMap, error::Error, fmt::{Debug, Display}, fs, io::prelude::*, net::{TcpListener, TcpStream}, rc::Rc, sync::Arc
+    collections::HashMap,
+    error::Error,
+    fmt::{Debug, Display},
+    fs,
+    io::prelude::*,
+    net::{TcpListener, TcpStream},
+    sync::Arc,
 };
 
 use logger::{debug, error, info};
@@ -9,7 +15,7 @@ use crate::{
     http::{HttpContentType, HttpMethod, HttpStatus},
     request,
     response::{self, Response},
-    Configuration, TLS,
+    Configuration
 };
 use crate::{DOUBLE_PATH_SEPARATOR, EMPTY, LEFT_BRACKET, PATH_SEPARATOR, RIGHT_BRACKET};
 
@@ -42,43 +48,37 @@ impl RouteTable {
         let req_segments = qualified_path.split('/').collect::<Vec<&str>>();
 
         let matches = self
-                                    .0
-                                    .iter()
-                                    .filter(|(path, route_method, route)| {
+            .0
+            .iter()
+            .filter(|(_, route_method, route)| {
+                if route_method != http_method {
+                    return false;
+                }
 
-                                        if route_method != http_method {
-                                            return false;
-                                        }
+                if req_segments.len() != route.segments.len() {
+                    return false;
+                }
 
-                                        if req_segments.len() != route.segments.len() {
-                                            return false;
-                                        }
+                for (index, segment) in route.segments.iter().enumerate() {
+                    if segment.starts_with(LEFT_BRACKET) && segment.ends_with(RIGHT_BRACKET) {
+                        continue;
+                    }
 
-                                        for (index, segment) in route.segments.iter().enumerate() {
-                                            if segment.starts_with(LEFT_BRACKET) && segment.ends_with(RIGHT_BRACKET) {
-                                                continue;
-                                            }
-                                    
-                                            if segment != &req_segments[index] {
-                                                return false;
-                                            }
-                                        }
+                    if segment != &req_segments[index] {
+                        return false;
+                    }
+                }
 
-                                        return true;
-
-
-                                    })
-                                    .map(|(_, _, route)| route)
-                                    .collect::<Vec<&Route>>();
-
-
+                return true;
+            })
+            .map(|(_, _, route)| route)
+            .collect::<Vec<&Route>>();
 
         if !matches.is_empty() {
             return Some(matches[0]);
         }
-        
+
         return None;
-        
     }
 
     pub fn insert(&mut self, route: Route) {
@@ -152,15 +152,6 @@ impl RouterBuilder {
     pub fn workers(&mut self, workers: usize) -> &mut Self {
         self.configuration.workers = workers;
         self
-    } 
-
-    pub fn tls(&mut self, key_file: String, cert_file: String, ca_file: String) -> &mut Self {
-        self.configuration.tls = Some(TLS {
-            key_file,
-            cert_file,
-            ca_file,
-        });
-        self
     }
 
     fn get_bind_address(&self) -> String {
@@ -206,11 +197,14 @@ impl RouterBuilder {
     pub fn add_route(&mut self, path: &str, method: HttpMethod, handler: HandlerFunc) -> &Self {
         let sanitized_path = path.replace(DOUBLE_PATH_SEPARATOR, PATH_SEPARATOR);
 
-        let tokens: Vec<String> = sanitized_path.split(PATH_SEPARATOR).map(|s| s.to_string()).collect();
+        let tokens: Vec<String> = sanitized_path
+            .split(PATH_SEPARATOR)
+            .map(|s| s.to_string())
+            .collect();
 
         let mut path_params = vec![];
 
-        for token in &tokens{
+        for token in &tokens {
             if token.starts_with(LEFT_BRACKET) && token.ends_with(RIGHT_BRACKET) {
                 let param = token
                     .replace(LEFT_BRACKET, EMPTY)

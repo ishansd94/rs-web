@@ -9,3 +9,4 @@ members = ["pkg/fastweb"]
 [dependencies]
 fastweb = { path = "pkg/fastweb" }
 logger ={ path = "pkg/logger" }
+badserde = { path = "pkg/badserde" }

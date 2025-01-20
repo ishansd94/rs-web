@@ -1,9 +1,10 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::{http::{Encoding, Headers, HttpMethod}, PATH_SEPARATOR};
+use crate::http::{Encoding, Headers, HttpMethod};
 
-use super::{CRLF, QUERY_PARAM_KEY_VALUE_SEPARATOR, QUERY_PARAM_SEPARATOR, QUERY_PARAM_START, EMPTY};
-
+use super::{
+    CRLF, EMPTY, QUERY_PARAM_KEY_VALUE_SEPARATOR, QUERY_PARAM_SEPARATOR, QUERY_PARAM_START,
+};
 
 #[derive(Debug, Clone)]
 pub struct Request {
@@ -15,7 +16,7 @@ pub struct Request {
     headers: HashMap<String, String>,
     body: String,
     raw: String,
-    encoding: Option<Encoding>
+    encoding: Option<Encoding>,
 }
 
 impl Request {
@@ -58,7 +59,6 @@ impl Request {
     pub fn encoding(&self) -> Option<Encoding> {
         self.encoding.clone()
     }
-    
 }
 
 pub fn parse(request_raw: &str) -> Request {
@@ -86,34 +86,40 @@ pub fn parse(request_raw: &str) -> Request {
     let mut path_parts = path.split(QUERY_PARAM_START);
     let qualified_path = path_parts.nth(0).unwrap();
     let query_params_str = path_parts.nth(0).unwrap_or_default();
-    
+
     let mut query_params = HashMap::new();
 
     if !query_params_str.is_empty() {
         query_params = query_params_str
-                        .split(QUERY_PARAM_SEPARATOR)
-                        .map(|param| {
-                            let mut param_parts = param.split(QUERY_PARAM_KEY_VALUE_SEPARATOR);
-                            let key = param_parts.next().unwrap().to_string();
-                            let value = param_parts.next().unwrap_or(EMPTY).to_string();
-                            (key, value)
-                        })
-                        .collect();
+            .split(QUERY_PARAM_SEPARATOR)
+            .map(|param| {
+                let mut param_parts = param.split(QUERY_PARAM_KEY_VALUE_SEPARATOR);
+                let key = param_parts.next().unwrap().to_string();
+                let value = param_parts.next().unwrap_or(EMPTY).to_string();
+                (key, value)
+            })
+            .collect();
     }
 
     // Parse the body
-    let body = lines.collect::<Vec<&str>>().join(CRLF).trim_matches(char::from(0)).to_string();
+    let body = lines
+        .collect::<Vec<&str>>()
+        .join(CRLF)
+        .trim_matches(char::from(0))
+        .to_string();
 
-    let encoding = headers.get(Headers::AcceptEncoding.to_str()).and_then(|encoding| {
-        let supported = Encoding::get_supported();
-        let accepted_encodings = encoding.split(',').map(|e| e.trim());
-        for accepted_encoding in accepted_encodings {
-            if supported.contains(&Encoding::from_str(accepted_encoding).unwrap()) {
-                return Some(Encoding::from_str(accepted_encoding).unwrap_or_default());
+    let encoding = headers
+        .get(Headers::AcceptEncoding.to_str())
+        .and_then(|encoding| {
+            let supported = Encoding::get_supported();
+            let accepted_encodings = encoding.split(',').map(|e| e.trim());
+            for accepted_encoding in accepted_encodings {
+                if supported.contains(&Encoding::from_str(accepted_encoding).unwrap()) {
+                    return Some(Encoding::from_str(accepted_encoding).unwrap_or_default());
+                }
             }
-        }
-        None
-    });
+            None
+        });
     // Construct and return the Request
     return Request {
         method: HttpMethod::from_str(method).unwrap(),
@@ -124,6 +130,6 @@ pub fn parse(request_raw: &str) -> Request {
         query_params,
         path_params: HashMap::new(),
         raw: request_raw.to_string(),
-        encoding
-    }
+        encoding,
+    };
 }

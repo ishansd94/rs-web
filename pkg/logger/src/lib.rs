@@ -1,13 +1,13 @@
-use std::fmt;
-use std::sync::Once;
 use chrono;
 use colored::{self, Colorize};
+use std::fmt;
+use std::sync::Once;
 
 static INIT: Once = Once::new();
 static mut GLOBAL_MIN_LEVEL: Level = Level::Info;
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub enum Level {    
+pub enum Level {
     Debug,
     Info,
     Warn,
@@ -18,11 +18,11 @@ impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Level::Debug => write!(f, "DEBUG"),
-            Level::Info => write!(f, "INFO"), 
+            Level::Info => write!(f, "INFO"),
             Level::Warn => write!(f, "WARN"),
             Level::Error => write!(f, "ERROR"),
         }
-    }  
+    }
 }
 
 pub fn set_level(level: Level) {

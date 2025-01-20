@@ -7,3 +7,4 @@ edition = "2021"
 workers = { path = "../workers" }
 logger = { path = "../logger" }
 flate2 = "1.0.35"
+badserde ={ path = "../badserde" }
