@@ -1,9 +1,9 @@
 use crate::http::{Encoding, HttpContentType, HttpStatus};
 use crate::CRLF;
+use badserde::json::Serde;
 use flate2::{write::GzEncoder, Compression};
 use logger::debug;
 use std::io::Write;
-use badserde::json::ToJson;
 
 // #[derive(Default)]
 pub struct Response {
@@ -28,7 +28,7 @@ pub fn html(status: HttpStatus, content: String) -> Response {
     return new(status, content, HttpContentType::HTML);
 }
 
-pub fn json<T: ToJson>(status: HttpStatus, content: T ) -> Response {
+pub fn json<T: Serde>(status: HttpStatus, content: T ) -> Response {
     return new(status, content.to_json(), HttpContentType::JSON);
 }
 

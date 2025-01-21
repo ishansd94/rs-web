@@ -1,6 +1,7 @@
-use std::{collections::HashMap, hash::Hash, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
-use badserde::json::FromJson;
+use badserde::json::Serde;
 use fastweb;
 use fastweb::handler;
 use fastweb::http::HttpStatus;
@@ -30,11 +31,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // println!("query params: {:?}", r.query_params());
             // println!("body: {:?}", r.body());
 
-            let mut  content: HashMap<String, String> = HashMap::new();
+            let mut content: HashMap<String, String> = HashMap::new();
 
-            content.insert(String::from("count"), r.path_params().get("count").unwrap().to_string());
+            content.insert(
+                String::from("count"),
+                r.path_params().get("count").unwrap().to_string(),
+            );
 
-            let body : HashMap<String, String> = FromJson::from_json(r.body()).unwrap();
+            let body: HashMap<String, String> = Serde::from_json(r.body()).unwrap();
 
             for (key, value) in body.iter() {
                 content.insert(key.to_string(), value.to_string());
